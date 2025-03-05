@@ -18,7 +18,7 @@ def match_skus_and_extract_info(amazon_sale_order_template, cp_item_list, produc
         # Match ASIN with CP Item List
         matched_cp_item = cp_item_list[cp_item_list['Amazon ASIN'] == amazon_sku]
 
-        if not matched_cp_item.empty:766654
+        if not matched_cp_item.empty:
             item_code = matched_cp_item.iloc[0]['Item Code']
 
             # Find matching Product Bundle details using Item Code
