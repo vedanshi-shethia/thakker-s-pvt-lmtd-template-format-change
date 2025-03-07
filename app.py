@@ -13,7 +13,7 @@ def main():
 
     if amazon_file and cp_file and product_bundle_file:
         processor = OrderProcessor(amazon_file, cp_file, product_bundle_file)
-        output_df = processor.process()
+        [output_df, error_df] = processor.process()
 
         st.write("Processed Data:")
         st.dataframe(output_df)
@@ -26,6 +26,20 @@ def main():
             label="Download Processed Excel File",
             data=output_buffer,
             file_name="processed_output.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+        st.write("Error Data:")
+        st.dataframe(error_df)
+
+        output_buffer = io.BytesIO()
+        error_df.to_excel(output_buffer, index=False)
+        output_buffer.seek(0)
+
+        st.download_button(
+            label="Download Error Excel File",
+            data=output_buffer,
+            file_name="errors.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 

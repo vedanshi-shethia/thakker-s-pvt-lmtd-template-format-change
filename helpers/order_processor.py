@@ -16,6 +16,7 @@ class OrderProcessor:
 
     def process(self):
         output_rows = []
+        error_rows = []
 
         for _, order in self.amazon_df.iterrows():
             asin = order['asin']
@@ -29,47 +30,81 @@ class OrderProcessor:
             price_per_packet = ''
             error_text = ''
 
-            cp_match = self.cp_df[self.cp_df['Amazon ASIN'] == asin]
-            if cp_match.empty:
-                item_code = f"Error: No CP Item for ASIN {asin}"
-                product_bundle_quantity = f"Error: No CP Item"
-                price_per_packet = f"Error: No CP Item"
-            else:
-                item_code = cp_match.iloc[0]['Item Code']
-                bundle_match = self.bundle_df[self.bundle_df['ID'] == item_code]
-                if bundle_match.empty:
-                    item_code = f"Error: No Product Bundle for Item Code {item_code}"
-                    product_bundle_quantity = f"Error: No Bundle"
-                    price_per_packet = f"Error: No Bundle"
-                else:
-                    item_code = bundle_match.iloc[0]['Item (Product Bundle Item)']
-                    product_bundle_quantity = int(bundle_match.iloc[0]['Qty (Product Bundle Item)'])
-                    bundle_quantity = extract_pack_of_quantity(bundle_match.iloc[0]['ID'])
-
-                    price_per_packet = calculate_price_per_packet(
-                        item_price, bundle_quantity, product_bundle_quantity, amazon_quantity
-                    )
-
             state = format_state(order.get('ship-state'))
-            customer = f"Amazon Customer ({state})"
+            customer = f"Amazon Sales ({state})"
 
             date_obj = datetime.fromisoformat(order['purchase-date'])
             formatted_date = date_obj.strftime("%Y-%m-%d")
 
-            output_rows.append({
-                'Item Code (Items)': str(item_code),
-                'Quantity (Items)': str(product_bundle_quantity),
-                'Rate (Items)': str(price_per_packet),
-                'Customer': customer,
-                'Date': formatted_date,
-                'Customer\'s Purchase Order': order['amazon-order-id'],
-                'Customer\'s Purchase Order Date': formatted_date,
-                'Rate of Stock UOM (Items)': str(price_per_packet),
-                'FulFilled': order['fulfillment-channel']
-            })
+            cp_match = self.cp_df[self.cp_df['Amazon ASIN'] == asin]
+            if cp_match.empty:
+                item_code_error_message = f"Error: No CP Item for ASIN {asin}"
+
+                error_rows.append({
+                    'Item Code (Items)': item_code_error_message,
+                    'Customer': customer,
+                    'Date': formatted_date,
+                    'Customer\'s Purchase Order': order['amazon-order-id'],
+                    'Customer\'s Purchase Order Date': formatted_date,
+                    'Rate of Stock UOM (Items)': str(price_per_packet),
+                    'FulFilled': order['fulfillment-channel']
+                })
+
+            else:
+                item_code = cp_match.iloc[0]['Item Code']
+                bundle_match = self.bundle_df[self.bundle_df['ID'] == item_code]
+                if bundle_match.empty:
+                    item_code_error_message = f"Error: No Product Bundle for Item Code {item_code}"
+
+                    error_rows.append({
+                        'Item Code (Items)': item_code_error_message,
+                        'Customer': customer,
+                        'Date': formatted_date,
+                        'Customer\'s Purchase Order': order['amazon-order-id'],
+                        'Customer\'s Purchase Order Date': formatted_date,
+                        'Rate of Stock UOM (Items)': str(price_per_packet),
+                        'FulFilled': order['fulfillment-channel']
+                    })
+
+                else:
+                    item_code = bundle_match.iloc[0]['Item (Product Bundle Item)']
+                    product_bundle_quantity = int(bundle_match.iloc[0]['Qty (Product Bundle Item)'])
+
+                    if(not product_bundle_quantity or not amazon_quantity or not bundle_quantity):
+
+                        error_message = f"Error while calculating rate"
+
+                        error_rows.append({
+                            'Item Code (Items)': str(item_code),
+                            'Rate (Items)': error_message,
+                            'Customer': customer,
+                            'Date': formatted_date,
+                            'Customer\'s Purchase Order': order['amazon-order-id'],
+                            'Customer\'s Purchase Order Date': formatted_date,
+                            'Rate of Stock UOM (Items)': error_message,
+                            'FulFilled': order['fulfillment-channel']
+                        })
+
+                    else :
+                        price_per_packet = calculate_price_per_packet(
+                            item_price, product_bundle_quantity, amazon_quantity
+                        )
+
+                        output_rows.append({
+                            'Item Code (Items)': str(item_code),
+                            'Quantity (Items)': str(product_bundle_quantity * amazon_quantity),
+                            'Rate (Items)': str(price_per_packet),
+                            'Customer': customer,
+                            'Date': formatted_date,
+                            'Customer\'s Purchase Order': order['amazon-order-id'],
+                            'Customer\'s Purchase Order Date': formatted_date,
+                            'Rate of Stock UOM (Items)': str(price_per_packet),
+                            'FulFilled': order['fulfillment-channel']
+                        })
 
         output_df = pd.DataFrame(output_rows)
-        return self.add_default_columns(output_df)
+        error_rows = pd.DataFrame(error_rows)
+        return [self.add_default_columns(output_df), self.add_default_columns(error_rows)]
 
 
 
