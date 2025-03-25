@@ -48,10 +48,10 @@ class PaymentStatementTemplate:
             if pd.isna(order_id):
 
                 amount = order.get("amount")
-                account_entry_debit = account_entry_credit = ""
 
                 if order["amount-description"] == "Current Reserve Amount" or order["amount-description"] == "Previous Reserve Amount Balance":
 
+                    account_entry_debit = account_entry_credit = ""
                     if order_type == "Electronic_" :
                         account_entry_debit = "1601 - Amazon Electronic Fund - TMPL"
                         account_entry_credit = "1602 - Amazon Freeze Fund - Electronic - TMPL"
@@ -78,6 +78,7 @@ class PaymentStatementTemplate:
                         "Debit (Accounting Entries)": min(amount, 0) * -1,
                         "Credit (Accounting Entries)": max(amount, 0),
                     })
+
                 continue
             
             order_id_match = self.sale_register[self.sale_register["Customer's Purchase Order"] == order_id]
@@ -144,16 +145,79 @@ class PaymentStatementTemplate:
                 processed_orders.add(order_id)
             
             if order_id in last_occurrence and index == last_occurrence[order_id]:
-                total_amount = order_sums.loc[order_sums["order-id"] == order_id, "amount"].values[0]
-                account_entry = Constants.ACCOUNT_27_COD if order_type == "COD_" and re.match(r"^27\d*", company_gstin) else Constants.ACCOUNT_29_COD
-                account_entry = Constants.ACCOUNT_27_ELECTRONIC if order_type == "Electronic_" and re.match(r"^27\d*", company_gstin) else Constants.ACCOUNT_29_ELECTRONIC
-                
+
+                account_accounting_entries = ''
+                total_amount = order_sums.loc[order_sums['order-id'] == order_id, 'amount'].values[0]
+                if order_type == 'COD_':
+                    if re.match(r"^27\d*", company_gstin):
+                        account_accounting_entries = '1604 - Amazon COD Fund - TMPL'
+                    if re.match(r"^29\d*", company_gstin):
+                        account_accounting_entries = '1604 - Amazon COD Fund - TMPL29'
+
+                if order_type == 'Electronic_':
+                    if re.match(r"^27\d*", company_gstin):
+                        account_accounting_entries = '1601 - Amazon Electronic Fund - TMPL'
+                    if re.match(r"^29\d*", company_gstin):
+                        account_accounting_entries = '1601 - Amazon Electronic Fund - TMPL29'
+
                 output_rows.append({
                     "Reference Number": order_id,
-                    "Account (Accounting Entries)": account_entry,
+                    "Account (Accounting Entries)": account_accounting_entries,
                     "Cost Center": order_id_match.iloc[0]["Cost Center"],
                     "Debit (Accounting Entries)": max(total_amount, 0),
                     "Credit (Accounting Entries)": min(total_amount, 0) * -1,
                 })
+
+        null_orders = self.payment_statement[pd.isna(self.payment_statement["order-id"]) & 
+                                            self.payment_statement["amount-type"].isin(["Cost of Advertising", "Amazon Business Advisory Fee"])]
+        null_orders.sort_values(by=["posted-date"], inplace=True)
+
+        posted_dates = set()
+
+        grouped_null_orders = null_orders.groupby("posted-date", sort=False)
+        for posted_date, group in grouped_null_orders:
+            posted_date = datetime.strptime(posted_date, "%d.%m.%Y").strftime("%Y-%m-%d")
+            total_amount = group["amount"].sum()
+            
+            for _, order in group.iterrows():
+                amount = order["amount"]
+                if posted_date in posted_dates:
+                    output_rows.append({
+                        "Account (Accounting Entries)": "Creditors (INR) - TMPL",
+                        "Cost Center (Accounting Entries)": "6 - Retail - TMPL",
+                        "Debit (Accounting Entries)": min(amount, 0) * -1,
+                        "Credit (Accounting Entries)": max(amount, 0),
+                        "Party (Accounting Entries)": "Amazon Seller Services Private Limited",
+                        "Party Type (Accounting Entries)": "Supplier"
+                    })
+
+                else:
+                    output_rows.append({
+                        "Company": "Thakker Mercantile Private Limited",
+                        "Entry Type": "Contra Entry",
+                        "Posting Date": posted_date,
+                        "Series": Constants.SERIES_FORMAT,
+                        "Reference Date": posted_date,
+                        "Reference Number": f"{settlement_start_date} - {settlement_end_date} - {order["amount-type"]}",
+                        "User Remark": f"{settlement_start_date} - {settlement_end_date}",
+                        "Company GSTIN": "27AACCT1557E1ZH",
+                        "Account (Accounting Entries)": "Creditors (INR) - TMPL",
+                        "Cost Center (Accounting Entries)": "6 - Retail - TMPL",
+                        "Debit (Accounting Entries)": min(amount, 0) * -1,
+                        "Credit (Accounting Entries)": max(amount, 0),
+                        "Party (Accounting Entries)": "Amazon Seller Services Private Limited",
+                        "Party Type (Accounting Entries)": "Supplier"
+                    })
+                    posted_dates.add(posted_date)
+            
+                
+                
+            output_rows.append({
+                "Account (Accounting Entries)": "1601 - Amazon Electronic Fund - TMPL",
+                "Cost Center (Accounting Entries)": "6 - Retail - TMPL",
+                "Debit (Accounting Entries)": 0,
+                "Credit (Accounting Entries)": total_amount * -1,
+            })
+        
         
         return pd.DataFrame(output_rows), pd.DataFrame(error_rows)
