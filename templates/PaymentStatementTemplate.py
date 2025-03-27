@@ -160,7 +160,6 @@ class PaymentStatementTemplate:
                         account_accounting_entries = '1601 - Amazon Electronic Fund - TMPL29'
 
                 output_rows.append({
-                    "Reference Number": order_id,
                     "Account (Accounting Entries)": account_accounting_entries,
                     "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
                     "Debit (Accounting Entries)": max(total_amount, 0),
