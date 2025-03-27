@@ -1,11 +1,11 @@
 import streamlit as st
 import io
 import pandas as pd
-from templates.SaleOrder import SaleOrder
+from templates.SaleOrderTemplate import SaleOrderTemplate
 
 class SaleOrder :
 
-    def setUI(__self) :
+    def setUI(self) :
         
         st.title("Sale order template")
 
@@ -14,7 +14,7 @@ class SaleOrder :
         product_bundle_file = st.file_uploader("Upload Product Bundle File", type=["xlsx", "xls"])
 
         if amazon_file and cp_file and product_bundle_file:
-            processor = SaleOrder(amazon_file, cp_file, product_bundle_file)
+            processor = SaleOrderTemplate(amazon_file, cp_file, product_bundle_file)
             [output_df, error_df] = processor.process()
 
             st.write("Processed Data:")

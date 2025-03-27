@@ -3,7 +3,7 @@ from datetime import datetime
 from helpers.utils import extract_pack_of_quantity, calculate_price_per_packet, format_state
 from helpers.file_handler import FileHandler
 
-class SaleOrder:
+class SaleOrderTemplate:
 
     def __init__(self, amazon_file, cp_file, product_bundle_file):
         self.amazon_df = FileHandler.read_excel(amazon_file)
@@ -47,7 +47,7 @@ class SaleOrder:
                     'Customer\'s Purchase Order': order['amazon-order-id'],
                     'Customer\'s Purchase Order Date': formatted_date,
                     'Rate of Stock UOM (Items)': str(price_per_packet),
-                    'FulFilled': order['fulfillment-channel']
+                    'Fulfilled By': order['fulfillment-channel']
                 })
 
             else:
@@ -63,7 +63,7 @@ class SaleOrder:
                         'Customer\'s Purchase Order': order['amazon-order-id'],
                         'Customer\'s Purchase Order Date': formatted_date,
                         'Rate of Stock UOM (Items)': str(price_per_packet),
-                        'FulFilled': order['fulfillment-channel']
+                        'Fulfilled By': order['fulfillment-channel']
                     })
 
                 else:
@@ -82,7 +82,7 @@ class SaleOrder:
                             'Customer\'s Purchase Order': order['amazon-order-id'],
                             'Customer\'s Purchase Order Date': formatted_date,
                             'Rate of Stock UOM (Items)': error_message,
-                            'FulFilled': order['fulfillment-channel']
+                            'Fulfilled By': order['fulfillment-channel']
                         })
 
                     else :
@@ -99,7 +99,7 @@ class SaleOrder:
                             'Customer\'s Purchase Order': order['amazon-order-id'],
                             'Customer\'s Purchase Order Date': formatted_date,
                             'Rate of Stock UOM (Items)': str(price_per_packet),
-                            'FulFilled': order['fulfillment-channel']
+                            'Fulfilled By': order['fulfillment-channel']
                         })
 
         output_df = pd.DataFrame(output_rows)
