@@ -111,9 +111,8 @@ class PaymentStatementTemplate:
             
             if order_id in processed_orders:
                 output_rows.append({
-                    "Reference Number": order_id,
                     "Account (Accounting Entries)": account_entry,
-                    "Cost Center": order_id_match.iloc[0]["Cost Center"],
+                    "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
                     "Debit (Accounting Entries)": debit_entry * -1,
                     "Credit (Accounting Entries)": credit_entry,
                     "Party (Accounting Entries)": party,
@@ -133,7 +132,7 @@ class PaymentStatementTemplate:
                     "User Remark": user_remark,
                     "Company GSTIN": company_gstin,
                     "Account (Accounting Entries)": account_entry,
-                    "Cost Center": order_id_match.iloc[0]["Cost Center"],
+                    "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
                     "Debit (Accounting Entries)": debit_entry * -1,
                     "Credit (Accounting Entries)": credit_entry,
                     "Party (Accounting Entries)": party,
@@ -163,7 +162,7 @@ class PaymentStatementTemplate:
                 output_rows.append({
                     "Reference Number": order_id,
                     "Account (Accounting Entries)": account_accounting_entries,
-                    "Cost Center": order_id_match.iloc[0]["Cost Center"],
+                    "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
                     "Debit (Accounting Entries)": max(total_amount, 0),
                     "Credit (Accounting Entries)": min(total_amount, 0) * -1,
                 })
@@ -210,10 +209,16 @@ class PaymentStatementTemplate:
                     })
                     posted_dates.add(posted_date)
             
-                
-                
+            
+                accounting_entry = ""
+                if order_type == "Electronic_" :
+                    accounting_entry = "1601 - Amazon Electronic Fund - TMPL"
+
+                elif order_type == "COD_" :
+                    accounting_entry = "1603 - Amazon Freeze Fund - COD - TMPL"  
+
             output_rows.append({
-                "Account (Accounting Entries)": "1601 - Amazon Electronic Fund - TMPL",
+                "Account (Accounting Entries)": accounting_entry,
                 "Cost Center (Accounting Entries)": "6 - Retail - TMPL",
                 "Debit (Accounting Entries)": 0,
                 "Credit (Accounting Entries)": total_amount * -1,
