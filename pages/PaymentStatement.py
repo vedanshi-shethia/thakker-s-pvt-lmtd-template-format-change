@@ -11,14 +11,15 @@ class PaymentStatement :
 
         template_option = st.radio("Select order type", ["COD_", "Electronic_"])
 
+        expense = st.text_area("Expense", value="Promo rebates,Product tax discount")
+
         payment_statement = st.file_uploader("Upload Payment Statement", type=["xlsx", "xls"])
         sale_register = st.file_uploader("Upload Sale Register", type=["xlsx", "xls"])
         matching_template = st.file_uploader("Upload Matching Template", type=["xlsx", "xls"])
 
-
         if payment_statement and sale_register and matching_template:
             processor = PaymentStatementTemplate(payment_statement, sale_register, matching_template)
-            [output_df, error_df] = processor.process(template_option)
+            [output_df, error_df] = processor.process(template_option, expense)
 
             st.write("Processed Data:")
             st.dataframe(output_df)

@@ -21,7 +21,7 @@ def get_accounting_entry(company_gstin, match_template):
         return match_template.iloc[0]["ERP 27 Company "]
     elif re.match(r"^29\d*", company_gstin):
         return match_template.iloc[0]["ERP 29 Company "]
-    return ""
+    return "" 
 
 class PaymentStatementTemplate:
     def __init__(self, payment_statement_file, sale_register_file, matching_template_file):
@@ -29,9 +29,15 @@ class PaymentStatementTemplate:
         self.sale_register = FileHandler.read_excel(sale_register_file)
         self.matching_template = FileHandler.read_excel(matching_template_file)
 
-    def process(self, order_type):
+    def process(self, order_type, expense):
+
         output_rows, error_rows = [], []
         processed_orders = set()
+        expense = expense.split(',')
+        total_expense_amount = 0
+        principle_record = {}
+        total_debit = 0
+        total_credit = 0
 
         settlement_start_date = parse_date(self.payment_statement.iloc[0]["settlement-start-date"])
         settlement_end_date = parse_date(self.payment_statement.iloc[0]["settlement-end-date"])
@@ -40,11 +46,14 @@ class PaymentStatementTemplate:
         self.payment_statement.sort_values(by=["order-id"], inplace=True)
         order_sums = self.payment_statement.groupby("order-id", as_index=False)["amount"].sum()
         last_occurrence = self.payment_statement.reset_index().groupby("order-id")["index"].last().to_dict()
+
+        print(last_occurrence)
         
         for index, order in self.payment_statement.iterrows():
             order_id = order.get("order-id")
             posting_date = datetime.strptime(str(order["posted-date"]), "%d.%m.%Y").strftime("%Y-%m-%d")
 
+            #For orders that do not have an order id.
             if pd.isna(order_id):
 
                 amount = order.get("amount")
@@ -81,6 +90,7 @@ class PaymentStatementTemplate:
 
                 continue
             
+            # For order that have id
             order_id_match = self.sale_register[self.sale_register["Customer's Purchase Order"] == order_id]
             amount_description_match = self.matching_template[self.matching_template["amount-description"] == order["amount-description"]]
             
@@ -94,7 +104,7 @@ class PaymentStatementTemplate:
             company_gstin = str(order_id_match.iloc[0]["Company GSTIN"])
             account_entry = get_accounting_entry(company_gstin, amount_description_match)
 
-            
+
             debit_entry = order["amount"] if order["amount"] < 0 else 0
             credit_entry = order["amount"] if order["amount"] >= 0 else 0
             
@@ -108,44 +118,83 @@ class PaymentStatementTemplate:
             
             reference_date = datetime.strptime(str(order_id_match.iloc[0]["Posting Date"]), "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
             user_remark = f"{order_id} {settlement_start_date} - {settlement_end_date}"
-            
-            if order_id in processed_orders:
-                output_rows.append({
-                    "Account (Accounting Entries)": account_entry,
-                    "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
-                    "Debit (Accounting Entries)": debit_entry * -1,
-                    "Credit (Accounting Entries)": credit_entry,
-                    "Party (Accounting Entries)": party,
-                    "Party Type (Accounting Entries)": party_type,
-                    "Reference Name (Accounting Entries)": reference_name,
-                    "Reference Type (Accounting Entries)": reference_type,
-                    "User Remark (Accounting Entries)": order["amount-type"] + "|" + order["amount-description"]
-                })
-            else:
-                output_rows.append({
-                    "Company": order_id_match.iloc[0]["Company"],
-                    "Entry Type": "Bank Entry",
-                    "Posting Date": posting_date,
-                    "Series": Constants.SERIES_FORMAT,
-                    "Reference Date": reference_date,
-                    "Reference Number": order_id,
-                    "User Remark": user_remark,
-                    "Company GSTIN": company_gstin,
-                    "Account (Accounting Entries)": account_entry,
-                    "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
-                    "Debit (Accounting Entries)": debit_entry * -1,
-                    "Credit (Accounting Entries)": credit_entry,
-                    "Party (Accounting Entries)": party,
-                    "Party Type (Accounting Entries)": party_type,
-                    "Reference Name (Accounting Entries)": reference_name,
-                    "Reference Type (Accounting Entries)": reference_type,
-                    "User Remark (Accounting Entries)": order["amount-type"] + "|" + order["amount-description"]
-                })
-                processed_orders.add(order_id)
-            
+
+            if(order["amount-description"] in expense):
+                total_expense_amount += order["amount"]
+
+            if order["amount-description"] not in expense:
+
+                if(order["amount-description"] in "Principal") :
+                    principle_record = {
+                        "Account (Accounting Entries)": account_entry,
+                        "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
+                        "Debit (Accounting Entries)": debit_entry * -1,
+                        "Credit (Accounting Entries)": credit_entry,
+                        "Party (Accounting Entries)": party,
+                        "Party Type (Accounting Entries)": party_type,
+                        "Reference Name (Accounting Entries)": reference_name,
+                        "Reference Type (Accounting Entries)": reference_type,
+                    }
+                    
+
+                elif order_id in processed_orders:
+                
+                    output_rows.append({
+                        "Account (Accounting Entries)": account_entry,
+                        "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
+                        "Debit (Accounting Entries)": debit_entry * -1,
+                        "Credit (Accounting Entries)": credit_entry,
+                        "Party (Accounting Entries)": party,
+                        "Party Type (Accounting Entries)": party_type,
+                        "Reference Name (Accounting Entries)": reference_name,
+                        "Reference Type (Accounting Entries)": reference_type,
+                        "User Remark (Accounting Entries)": order["amount-type"] + "|" + order["amount-description"]
+                    })
+
+                    total_credit += credit_entry
+                    total_debit += debit_entry * -1
+
+                    print("Debit total: ", total_debit)
+                    print("Credit total: ", total_credit)
+                else:
+                    output_rows.append({
+                        "Company": order_id_match.iloc[0]["Company"],
+                        "Entry Type": "Bank Entry",
+                        "Posting Date": posting_date,
+                        "Series": Constants.SERIES_FORMAT,
+                        "Reference Date": reference_date,
+                        "Reference Number": order_id,
+                        "User Remark": user_remark,
+                        "Company GSTIN": company_gstin,
+                        "Account (Accounting Entries)": account_entry,
+                        "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
+                        "Debit (Accounting Entries)": debit_entry * -1,
+                        "Credit (Accounting Entries)": credit_entry,
+                        "Party (Accounting Entries)": party,
+                        "Party Type (Accounting Entries)": party_type,
+                        "Reference Name (Accounting Entries)": reference_name,
+                        "Reference Type (Accounting Entries)": reference_type,
+                        "User Remark (Accounting Entries)": order["amount-type"] + "|" + order["amount-description"]
+                    })
+
+                    total_credit += credit_entry
+                    total_debit += debit_entry * -1
+
+                    print("Debit total: ", total_debit)
+                    print("Credit total: ", total_credit)
+                    processed_orders.add(order_id)
+                
+                
+            # For the last row of a same order to sum all the amount and cancle evrything out. If positive then Debit and negative then debit.
             if order_id in last_occurrence and index == last_occurrence[order_id]:
 
+                principle_record["Credit (Accounting Entries)"] += total_expense_amount
+                principle_record["User Remark (Accounting Entries)"] = "ItemPrice|Principle " + "("+ str(principle_record["Credit (Accounting Entries)"]) + ")" "- [Expense: "+ str(total_expense_amount) +"]"
+                total_credit += principle_record["Credit (Accounting Entries)"]
+                output_rows.append(principle_record)
+
                 account_accounting_entries = ''
+
                 total_amount = order_sums.loc[order_sums['order-id'] == order_id, 'amount'].values[0]
                 if order_type == 'COD_':
                     if re.match(r"^27\d*", company_gstin):
@@ -159,13 +208,50 @@ class PaymentStatementTemplate:
                     if re.match(r"^29\d*", company_gstin):
                         account_accounting_entries = '1601 - Amazon Electronic Fund - TMPL29'
 
+                credit_entry = min(total_amount, 0) * -1
+                debit_entry =  max(total_amount, 0)
+
                 output_rows.append({
                     "Account (Accounting Entries)": account_accounting_entries,
                     "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
-                    "Debit (Accounting Entries)": max(total_amount, 0),
-                    "Credit (Accounting Entries)": min(total_amount, 0) * -1,
+                    "Debit (Accounting Entries)":debit_entry,
+                    "Credit (Accounting Entries)": credit_entry,
                 })
 
+                total_credit += credit_entry
+                total_debit += debit_entry  
+
+                difference = round(total_credit, 2) - total_credit
+
+                print("Debit total: ", total_debit)
+                print("Credit total: ", total_credit)
+
+                credit_entry = min(difference, 0) * -1
+                debit_entry =  max(difference, 0)
+
+                print("Debit entry: ", debit_entry)
+                print("Credit entry: ", credit_entry)
+                
+                account_accounting_entries = ''
+
+                if re.match(r"^27\d*", company_gstin):
+                    account_accounting_entries = 'Rounded Off - TMPL27'
+                if re.match(r"^29\d*", company_gstin):
+                    account_accounting_entries = 'Rounded Off - TMPL29'
+
+                output_rows.append({
+                    "Account (Accounting Entries)": account_accounting_entries,
+                    "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
+                    "Debit (Accounting Entries)":debit_entry,
+                    "Credit (Accounting Entries)": credit_entry,
+                })
+
+                
+                total_expense_amount = 0
+                total_credit = 0
+                total_debit = 0
+
+        # For the order that don't have order id and are of type Advertisement and business sdvisory !
         null_orders = self.payment_statement[pd.isna(self.payment_statement["order-id"]) & 
                                             self.payment_statement["amount-type"].isin(["Cost of Advertising", "Amazon Business Advisory Fee"])]
         null_orders.sort_values(by=["posted-date"], inplace=True)
@@ -222,6 +308,5 @@ class PaymentStatementTemplate:
                 "Debit (Accounting Entries)": 0,
                 "Credit (Accounting Entries)": total_amount * -1,
             })
-        
         
         return pd.DataFrame(output_rows), pd.DataFrame(error_rows)
