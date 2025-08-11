@@ -153,9 +153,6 @@ class PaymentStatementTemplate:
 
                     total_credit += credit_entry
                     total_debit += debit_entry * -1
-
-                    print("Debit total: ", total_debit)
-                    print("Credit total: ", total_credit)
                 else:
                     output_rows.append({
                         "Company": order_id_match.iloc[0]["Company"],
@@ -179,9 +176,6 @@ class PaymentStatementTemplate:
 
                     total_credit += credit_entry
                     total_debit += debit_entry * -1
-
-                    print("Debit total: ", total_debit)
-                    print("Credit total: ", total_credit)
                     processed_orders.add(order_id)
                 
                 
@@ -221,16 +215,11 @@ class PaymentStatementTemplate:
                 total_credit += credit_entry
                 total_debit += debit_entry  
 
-                difference = round(total_credit, 2) - total_credit
-
-                print("Debit total: ", total_debit)
-                print("Credit total: ", total_credit)
+                difference = round(total_credit) - total_credit
+                difference = round(difference, 2)
 
                 credit_entry = min(difference, 0) * -1
                 debit_entry =  max(difference, 0)
-
-                print("Debit entry: ", debit_entry)
-                print("Credit entry: ", credit_entry)
                 
                 account_accounting_entries = ''
 
