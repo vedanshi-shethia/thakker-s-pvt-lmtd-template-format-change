@@ -47,7 +47,6 @@ class PaymentStatementTemplate:
         order_sums = self.payment_statement.groupby("order-id", as_index=False)["amount"].sum()
         last_occurrence = self.payment_statement.reset_index().groupby("order-id")["index"].last().to_dict()
 
-        print(last_occurrence)
         
         for index, order in self.payment_statement.iterrows():
             order_id = order.get("order-id")
@@ -182,10 +181,11 @@ class PaymentStatementTemplate:
             # For the last row of a same order to sum all the amount and cancle evrything out. If positive then Debit and negative then debit.
             if order_id in last_occurrence and index == last_occurrence[order_id]:
 
+                
                 principle_record["Credit (Accounting Entries)"] += total_expense_amount
-                principle_record["User Remark (Accounting Entries)"] = "ItemPrice|Principle " + "("+ str(principle_record["Credit (Accounting Entries)"]) + ")" "- [Expense: "+ str(total_expense_amount) +"]"
+                
                 total_credit += principle_record["Credit (Accounting Entries)"]
-                output_rows.append(principle_record)
+                
 
                 account_accounting_entries = ''
 
@@ -213,27 +213,45 @@ class PaymentStatementTemplate:
                 })
 
                 total_credit += credit_entry
-                total_debit += debit_entry  
+                total_debit += debit_entry
+
+                total_credit = round(total_credit, 2)
+                total_debit = round(total_debit, 2)  
+
+                if(total_debit != total_credit) :
+                    error_rows.append({"Credit (Accounting Entries)": F"Total debit and Total credit do not match for {order_id}"})
 
                 difference = round(total_credit) - total_credit
                 difference = round(difference, 2)
 
-                credit_entry = min(difference, 0) * -1
-                debit_entry =  max(difference, 0)
+                print("Total Credit : ", total_credit)
+                print("Total Debit : ", total_debit)
+
+                print("Round off : ", difference)
+
+                if(difference != 0) :
+
+                    credit_entry = min(difference, 0) * -1
+                    debit_entry =  max(difference, 0)
+                    
+                    account_accounting_entries = ''
+
+                    if re.match(r"^27\d*", company_gstin):
+                        account_accounting_entries = 'Rounded Off - TMPL27'
+                    if re.match(r"^29\d*", company_gstin):
+                        account_accounting_entries = 'Rounded Off - TMPL29'
+
+                    output_rows.append({
+                        "Account (Accounting Entries)": account_accounting_entries,
+                        "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
+                        "Debit (Accounting Entries)":debit_entry,
+                        "Credit (Accounting Entries)": credit_entry,
+                    })
+
+                principle_record["Credit (Accounting Entries)"] += difference
+                principle_record["User Remark (Accounting Entries)"] = "ItemPrice|Principle " + "("+ str(principle_record["Credit (Accounting Entries)"]) + ")" + "- [Expense: "+ str(total_expense_amount) +"]" + "- [Roundoff: "+ str(difference) + "]" 
                 
-                account_accounting_entries = ''
-
-                if re.match(r"^27\d*", company_gstin):
-                    account_accounting_entries = 'Rounded Off - TMPL27'
-                if re.match(r"^29\d*", company_gstin):
-                    account_accounting_entries = 'Rounded Off - TMPL29'
-
-                output_rows.append({
-                    "Account (Accounting Entries)": account_accounting_entries,
-                    "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
-                    "Debit (Accounting Entries)":debit_entry,
-                    "Credit (Accounting Entries)": credit_entry,
-                })
+                output_rows.append(principle_record)
 
                 
                 total_expense_amount = 0
