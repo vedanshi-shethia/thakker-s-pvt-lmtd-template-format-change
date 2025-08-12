@@ -38,6 +38,7 @@ class PaymentStatementTemplate:
         principle_record = {}
         total_debit = 0
         total_credit = 0
+        first_principle = True
 
         settlement_start_date = parse_date(self.payment_statement.iloc[0]["settlement-start-date"])
         settlement_end_date = parse_date(self.payment_statement.iloc[0]["settlement-end-date"])
@@ -123,7 +124,7 @@ class PaymentStatementTemplate:
 
             if order["amount-description"] not in expense:
 
-                if(order["amount-description"] in "Principal") :
+                if(order["amount-description"] in "Principal") and first_principle:
                     principle_record = {
                         "Account (Accounting Entries)": account_entry,
                         "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
@@ -134,6 +135,7 @@ class PaymentStatementTemplate:
                         "Reference Name (Accounting Entries)": reference_name,
                         "Reference Type (Accounting Entries)": reference_type,
                     }
+                    first_principle = False
                     
 
                 elif order_id in processed_orders:
@@ -181,6 +183,7 @@ class PaymentStatementTemplate:
             # For the last row of a same order to sum all the amount and cancle evrything out. If positive then Debit and negative then debit.
             if order_id in last_occurrence and index == last_occurrence[order_id]:
 
+                first_principle = True
                 
                 principle_record["Credit (Accounting Entries)"] += total_expense_amount
 
@@ -231,7 +234,7 @@ class PaymentStatementTemplate:
                     account_accounting_entries = ''
 
                     if re.match(r"^27\d*", company_gstin):
-                        account_accounting_entries = 'Rounded Off - TMPL27'
+                        account_accounting_entries = 'Rounded Off - TMPL'
                     if re.match(r"^29\d*", company_gstin):
                         account_accounting_entries = 'Rounded Off - TMPL29'
 
