@@ -183,37 +183,31 @@ class PaymentStatementTemplate:
 
                 
                 principle_record["Credit (Accounting Entries)"] += total_expense_amount
+
+                principle_record["Credit (Accounting Entries)"] = round(principle_record["Credit (Accounting Entries)"], 2)
                 
                 total_credit += principle_record["Credit (Accounting Entries)"]
-                
 
-                account_accounting_entries = ''
+                account_accounting_entries_for_end_total = ''
 
                 total_amount = order_sums.loc[order_sums['order-id'] == order_id, 'amount'].values[0]
                 if order_type == 'COD_':
                     if re.match(r"^27\d*", company_gstin):
-                        account_accounting_entries = '1604 - Amazon COD Fund - TMPL'
+                        account_accounting_entries_for_end_total = '1604 - Amazon COD Fund - TMPL'
                     if re.match(r"^29\d*", company_gstin):
-                        account_accounting_entries = '1604 - Amazon COD Fund - TMPL29'
+                        account_accounting_entries_for_end_total = '1604 - Amazon COD Fund - TMPL29'
 
                 if order_type == 'Electronic_':
                     if re.match(r"^27\d*", company_gstin):
-                        account_accounting_entries = '1601 - Amazon Electronic Fund - TMPL'
+                        account_accounting_entries_for_end_total = '1601 - Amazon Electronic Fund - TMPL'
                     if re.match(r"^29\d*", company_gstin):
-                        account_accounting_entries = '1601 - Amazon Electronic Fund - TMPL29'
+                        account_accounting_entries_for_end_total = '1601 - Amazon Electronic Fund - TMPL29'
 
-                credit_entry = min(total_amount, 0) * -1
-                debit_entry =  max(total_amount, 0)
+                credit_entry_for_end_total = min(total_amount, 0) * -1
+                debit_entry_for_end_total =  max(total_amount, 0)
 
-                output_rows.append({
-                    "Account (Accounting Entries)": account_accounting_entries,
-                    "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
-                    "Debit (Accounting Entries)":debit_entry,
-                    "Credit (Accounting Entries)": credit_entry,
-                })
-
-                total_credit += credit_entry
-                total_debit += debit_entry
+                total_credit += credit_entry_for_end_total
+                total_debit += debit_entry_for_end_total
 
                 total_credit = round(total_credit, 2)
                 total_debit = round(total_debit, 2)  
@@ -248,11 +242,26 @@ class PaymentStatementTemplate:
                         "Credit (Accounting Entries)": credit_entry,
                     })
 
-                principle_record["Credit (Accounting Entries)"] += difference
-                principle_record["User Remark (Accounting Entries)"] = "ItemPrice|Principle " + "("+ str(principle_record["Credit (Accounting Entries)"]) + ")" + "- [Expense: "+ str(total_expense_amount) +"]" + "- [Roundoff: "+ str(difference) + "]" 
                 
+
+                if (difference < 0):
+                    debit_entry_for_end_total += difference
+                    principle_record["Credit (Accounting Entries)"] += difference * 2
+                    principle_record["Credit (Accounting Entries)"] = round(principle_record["Credit (Accounting Entries)"], 2)
+                    principle_record["User Remark (Accounting Entries)"] = "ItemPrice|Principle " + "("+ str(principle_record["Credit (Accounting Entries)"]) + ")" + "- [Expense: "+ str(total_expense_amount) +"]" + "- [Roundoff: "+ str(difference * 2) + "]" 
+                elif (difference > 0):
+                    principle_record["Credit (Accounting Entries)"] += difference
+                    principle_record["Credit (Accounting Entries)"] = round(principle_record["Credit (Accounting Entries)"], 2)
+                    principle_record["User Remark (Accounting Entries)"] = "ItemPrice|Principle " + "("+ str(principle_record["Credit (Accounting Entries)"]) + ")" + "- [Expense: "+ str(total_expense_amount) +"]" + "- [Roundoff: "+ str(difference) + "]" 
+
                 output_rows.append(principle_record)
 
+                output_rows.append({
+                    "Account (Accounting Entries)": account_accounting_entries_for_end_total,
+                    "Cost Center (Accounting Entries)": order_id_match.iloc[0]["Cost Center"],
+                    "Debit (Accounting Entries)":debit_entry_for_end_total,
+                    "Credit (Accounting Entries)": credit_entry_for_end_total,
+                })
                 
                 total_expense_amount = 0
                 total_credit = 0
