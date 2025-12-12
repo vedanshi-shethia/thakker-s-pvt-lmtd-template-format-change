@@ -114,6 +114,8 @@ class SaleOrderTemplate:
         df['Currency'] = 'INR'
         df['Order Type'] = 'Shopping Cart'
         df['Price List'] = 'Standard Selling'
+        df['Status'] = 'Draft'
+        df['Price List Exchange Rate'] = '1'
         df['Price List Currency'] = 'INR'
         df['Series'] = 'SAL-ORD-.YYYY.-'
         df['Company Address'] = ''
