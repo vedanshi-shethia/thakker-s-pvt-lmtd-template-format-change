@@ -116,6 +116,8 @@ class SaleOrderTemplate:
         df['Price List'] = 'Standard Selling'
         df['Status'] = 'Draft'
         df['Price List Exchange Rate'] = '1'
+        df['Exchange Rate'] = '1'
+        df['Cost Center (Items)'] = '6 - Retail - TMPL'
         df['Price List Currency'] = 'INR'
         df['Series'] = 'SAL-ORD-.YYYY.-'
         df['Company Address'] = ''
