@@ -18,9 +18,9 @@ def parse_date(date_str, input_format="%d.%m.%Y %H:%M:%S %Z", output_format="%Y/
 
 def get_accounting_entry(company_gstin, match_template):
     if re.match(r"^27\d*", company_gstin):
-        return match_template.iloc[0]["ERP 27 Company "]
+        return match_template.iloc[0]["ERP 27 Company"]
     elif re.match(r"^29\d*", company_gstin):
-        return match_template.iloc[0]["ERP 29 Company "]
+        return match_template.iloc[0]["ERP 29 Company"]
     return "" 
 
 class PaymentStatementTemplate:
@@ -48,8 +48,8 @@ class PaymentStatementTemplate:
 
     REQUIRED_MATCHING_TEMPLATE_COLUMNS = {
         "amount-description",
-        "ERP 27 Company ",
-        "ERP 29 Company ",
+        "ERP 27 Company",
+        "ERP 29 Company",
     }
 
     def __init__(self, payment_statement_file, sale_register_file, matching_template_file):
@@ -220,6 +220,9 @@ class PaymentStatementTemplate:
 
                 first_principle = True
                 
+                if "Credit (Accounting Entries)" not in principle_record:
+                    principle_record["Credit (Accounting Entries)"] = 0
+
                 principle_record["Credit (Accounting Entries)"] += total_expense_amount
 
                 principle_record["Credit (Accounting Entries)"] = round(principle_record["Credit (Accounting Entries)"], 2)
