@@ -5,14 +5,18 @@ from helpers.file_handler import FileHandler
 
 class SaleOrderTemplate:
 
+    REQUIRED_AMAZON_COLUMNS = ['asin', 'item-price', 'quantity', 'ship-state', 'purchase-date', 'amazon-order-id']
+    REQUIRED_CP_COLUMNS = ['Amazon ASIN', 'Item Code']
+    REQUIRED_BUNDLE_COLUMNS = ['ID', 'Item (Product Bundle Item)', 'Qty (Product Bundle Item)']
+    
     def __init__(self, amazon_file, cp_file, product_bundle_file):
         self.amazon_df = FileHandler.read_excel(amazon_file)
         self.cp_df = FileHandler.read_excel(cp_file)
         self.bundle_df = FileHandler.read_excel(product_bundle_file)
 
-        FileHandler.validate_columns(self.amazon_df, ['asin', 'item-price', 'quantity', 'ship-state', 'purchase-date', 'amazon-order-id'], "Amazon Sale Order Template")
-        FileHandler.validate_columns(self.cp_df, ['Amazon ASIN', 'Item Code'], "CP Item List")
-        FileHandler.validate_columns(self.bundle_df, ['ID', 'Item (Product Bundle Item)', 'Qty (Product Bundle Item)'], "Product Bundle")
+        FileHandler.validate_columns(self.amazon_df, self.REQUIRED_AMAZON_COLUMNS, "Amazon Sale Order Template")
+        FileHandler.validate_columns(self.cp_df, self.REQUIRED_CP_COLUMNS, "CP Item List")
+        FileHandler.validate_columns(self.bundle_df, self.REQUIRED_BUNDLE_COLUMNS, "Product Bundle")
 
     def process(self):
         output_rows = []

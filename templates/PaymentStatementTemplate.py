@@ -24,10 +24,45 @@ def get_accounting_entry(company_gstin, match_template):
     return "" 
 
 class PaymentStatementTemplate:
+
+    REQUIRED_PAYMENT_COLUMNS = {
+        "settlement-start-date",
+        "settlement-end-date",
+        "order-id",
+        "amount",
+        "posted-date",
+        "amount-description",
+        "amount-type",
+    }
+
+    REQUIRED_SALE_REGISTER_COLUMNS = {
+        "Customer's Purchase Order",
+        "Company GSTIN",
+        "Customer Name",
+        "Voucher",
+        "Voucher Type",
+        "Posting Date",
+        "Cost Center",
+        "Company",
+    }
+
+    REQUIRED_MATCHING_TEMPLATE_COLUMNS = {
+        "amount-description",
+        "ERP 27 Company ",
+        "ERP 29 Company ",
+    }
+
     def __init__(self, payment_statement_file, sale_register_file, matching_template_file):
         self.payment_statement = FileHandler.read_excel(payment_statement_file)
         self.sale_register = FileHandler.read_excel(sale_register_file)
         self.matching_template = FileHandler.read_excel(matching_template_file)
+        for df in [self.payment_statement, self.sale_register, self.matching_template]:
+            df.columns = df.columns.str.strip()
+            
+        FileHandler.validate_columns(self.payment_statement, self.REQUIRED_PAYMENT_COLUMNS, "Payment Statement")
+        FileHandler.validate_columns(self.sale_register, self.REQUIRED_SALE_REGISTER_COLUMNS, "Sale Register")
+        FileHandler.validate_columns(self.matching_template, self.REQUIRED_MATCHING_TEMPLATE_COLUMNS, "Matching Template")
+
 
     def process(self, order_type, expense):
 
