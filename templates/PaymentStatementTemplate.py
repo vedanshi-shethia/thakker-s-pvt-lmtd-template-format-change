@@ -151,7 +151,10 @@ class PaymentStatementTemplate:
                 reference_name = order_id_match.iloc[0]["Voucher"]
                 reference_type = order_id_match.iloc[0]["Voucher Type"]
             
-            reference_date = datetime.strptime(str(order_id_match.iloc[0]["Posting Date"]), "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
+            reference_date = datetime.strptime(
+                str(order_id_match.iloc[0]["Posting Date"]),
+                "%d-%m-%Y"
+            ).strftime("%Y-%m-%d")
             user_remark = f"{order_id} {settlement_start_date} - {settlement_end_date}"
 
             if(order["amount-description"] in expense):
