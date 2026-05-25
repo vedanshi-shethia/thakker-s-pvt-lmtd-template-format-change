@@ -2,25 +2,51 @@ import pandas as pd
 from datetime import datetime
 from helpers.utils import extract_pack_of_quantity, calculate_price_per_packet, format_state
 from helpers.file_handler import FileHandler
+from helpers.data_validation import DataValidator
+from helpers.required_columns import REQUIRED_AMAZON_COLUMNS, REQUIRED_CP_COLUMNS, REQUIRED_BUNDLE_COLUMNS
 
 class SaleOrderTemplate:
-
-    REQUIRED_AMAZON_COLUMNS = ['asin', 'item-price', 'quantity', 'ship-state', 'purchase-date', 'amazon-order-id']
-    REQUIRED_CP_COLUMNS = ['Amazon ASIN', 'Item Code']
-    REQUIRED_BUNDLE_COLUMNS = ['ID', 'Item (Product Bundle Item)', 'Qty (Product Bundle Item)']
     
     def __init__(self, amazon_file, cp_file, product_bundle_file):
         self.amazon_df = FileHandler.read_excel(amazon_file)
         self.cp_df = FileHandler.read_excel(cp_file)
         self.bundle_df = FileHandler.read_excel(product_bundle_file)
 
-        FileHandler.validate_columns(self.amazon_df, self.REQUIRED_AMAZON_COLUMNS, "Amazon Sale Order Template")
-        FileHandler.validate_columns(self.cp_df, self.REQUIRED_CP_COLUMNS, "CP Item List")
-        FileHandler.validate_columns(self.bundle_df, self.REQUIRED_BUNDLE_COLUMNS, "Product Bundle")
+        FileHandler.validate_columns(self.amazon_df, REQUIRED_AMAZON_COLUMNS, "Amazon Sale Order Template")
+        FileHandler.validate_columns(self.cp_df, REQUIRED_CP_COLUMNS, "CP Item List")
+        FileHandler.validate_columns(self.bundle_df, REQUIRED_BUNDLE_COLUMNS, "Product Bundle")
 
+    def run_pre_validation(self) -> list:
+        """
+        Runs full pre-flight row data type validations across all 3 source files 
+        before starting the ERP booking conversion.
+        """
+        errors = []
+        errors.extend(DataValidator.validate_amazon_sale_order_template(self.amazon_df))
+        errors.extend(DataValidator.validate_cp_item_list(self.cp_df))
+        errors.extend(DataValidator.validate_product_bundle(self.bundle_df))
+        return errors
+    
     def process(self):
         output_rows = []
         error_rows = []
+
+        # 1. Execute isolated validation and report early schema blocks
+        validation_errors = self.run_pre_validation()
+        if validation_errors:
+            for err in validation_errors:
+                error_rows.append({
+                    'Item Code (Items)': "Pre-Validation Data Error",
+                    'Rate (Items)': err,
+                    'Customer': "N/A",
+                    'Date': datetime.now().strftime("%Y-%m-%d"),
+                    'Customer\'s Purchase Order': "N/A",
+                    'Customer\'s Purchase Order Date': datetime.now().strftime("%Y-%m-%d"),
+                    'Rate of Stock UOM (Items)': "N/A",
+                    'Fulfilled By': "N/A"
+                })
+            error_df = pd.DataFrame(error_rows)
+            return [self.add_default_columns(pd.DataFrame(output_rows)), self.add_default_columns(error_df)]
 
         for _, order in self.amazon_df.iterrows():
             asin = order['asin']
