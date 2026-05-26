@@ -23,7 +23,6 @@ class SaleOrderTemplate:
         """
         errors = []
         errors.extend(DataValidator.validate_amazon_sale_order_template(self.amazon_df))
-        errors.extend(DataValidator.validate_cp_item_list(self.cp_df))
         errors.extend(DataValidator.validate_product_bundle(self.bundle_df))
         return errors
     
