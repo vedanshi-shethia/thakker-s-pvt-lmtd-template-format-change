@@ -162,15 +162,10 @@ class DataValidator:
             row_num = index + 1
 
             # Presence check for all essential operational columns
-            required_cols = REQUIRED_AMAZON_COLUMNS
+            required_cols = ['asin',  'quantity', 'ship-state', 'purchase-date', 'amazon-order-id']
             for col in required_cols:
                 if cls.is_null(row.get(col)):
                     errors.append(f"Row {row_num}: Required column '{col}' is missing or null in Amazon Sale Order Template.")
-
-            # Data-type validation for 'item-price'
-            price = row.get('item-price')
-            if not cls.is_null(price) and not cls.is_numeric(price):
-                errors.append(f"Row {row_num}: Column 'item-price' must be numeric. Found value: '{price}'.")
 
             # Data-type validation for 'quantity'
             qty = row.get('quantity')
@@ -184,8 +179,6 @@ class DataValidator:
                 errors.append(f"Row {row_num}: Column 'purchase-date' has an invalid ISO timestamp format. Found value: '{p_date}'. Expected format: 'YYYY-MM-DDTHH:MM:SS'.")
 
         return errors
-
-
 
     @classmethod
     def validate_product_bundle(cls, df: pd.DataFrame) -> list:
